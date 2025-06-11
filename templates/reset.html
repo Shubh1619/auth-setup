@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TRINETRA - Reset Password</title>
+  <link rel="icon" type="image/x-icon" href="logo.png">
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --primary-dark: #0056b3;
+      --error-color: #dc3545;
+      --success-color: #28a745;
+      --text-color: #333;
+      --light-gray: #f5f5f5;
+      --border-color: #ddd;
+    }
+    
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: var(--light-gray);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--text-color);
+    }
+    
+    .container {
+      background-color: white;
+      width: 100%;
+      max-width: 400px;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+      color: var(--text-color);
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+      position: relative;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 40px 12px 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 16px;
+      transition: border 0.3s;
+      box-sizing: border-box;
+    }
+    
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      border-color: var(--primary-color);
+      outline: none;
+    }
+    
+    .password-toggle {
+      position: absolute;
+      right: 15px;
+      top: 40px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #777;
+    }
+    
+    .password-toggle:hover {
+      color: var(--primary-color);
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: var(--primary-color);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 10px;
+    }
+    
+    button:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .message {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 14px;
+    }
+    
+    .error {
+      background-color: rgba(220, 53, 69, 0.1);
+      color: var(--error-color);
+    }
+    
+    .success {
+      background-color: rgba(40, 167, 69, 0.1);
+      color: var(--success-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Reset Your Password</h2>
+
+    <form id="resetForm">
+      <div class="form-group">
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password" required placeholder="Enter new password" />
+        <span class="password-toggle" id="toggleNewPassword">👁️</span>
+      </div>
+      
+      <div class="form-group">
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required placeholder="Confirm new password" />
+        <span class="password-toggle" id="toggleConfirmPassword">👁️</span>
+      </div>
+
+      <button type="submit">Reset Password</button>
+    </form>
+
+    <div class="message" id="message"></div>
+  </div>
+
+  <script>
+    // Get token from URL query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+
+    const form = document.getElementById("resetForm");
+    const messageDiv = document.getElementById("message");
+    const toggleNewPassword = document.getElementById("toggleNewPassword");
+    const toggleConfirmPassword = document.getElementById("toggleConfirmPassword");
+    const newPasswordInput = document.getElementById("new_password");
+    const confirmPasswordInput = document.getElementById("confirm_password");
+
+    if (!token) {
+      messageDiv.className = "message error";
+      messageDiv.textContent = "Reset token missing in URL.";
+      form.style.display = "none";
+    }
+
+    // Toggle password visibility
+    function togglePasswordVisibility(inputElement, toggleElement) {
+      if (inputElement.type === "password") {
+        inputElement.type = "text";
+        toggleElement.textContent = "🔒";
+      } else {
+        inputElement.type = "password";
+        toggleElement.textContent = "👁️";
+      }
+    }
+
+    toggleNewPassword.addEventListener("click", () => {
+      togglePasswordVisibility(newPasswordInput, toggleNewPassword);
+    });
+
+    toggleConfirmPassword.addEventListener("click", () => {
+      togglePasswordVisibility(confirmPasswordInput, toggleConfirmPassword);
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const new_password = form.new_password.value;
+      const confirm_password = form.confirm_password.value;
+
+      if (new_password !== confirm_password) {
+        messageDiv.className = "message error";
+        messageDiv.textContent = "Passwords do not match.";
+        return;
+      }
+
+      if (new_password.length < 8) {
+        messageDiv.className = "message error";
+        messageDiv.textContent = "Password must be at least 8 characters long.";
+        return;
+      }
+
+      const payload = { token, new_password };
+
+      try {
+        const response = await fetch("/reset-password/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          messageDiv.className = "message success";
+          messageDiv.textContent = data.message || "Password reset successfully!";
+          form.reset();
+          
+          // Redirect to login after 3 seconds
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 3000);
+        } else {
+          messageDiv.className = "message error";
+          messageDiv.textContent = data.detail || "An error occurred while resetting your password.";
+        }
+      } catch (error) {
+        messageDiv.className = "message error";
+        messageDiv.textContent = "Network error. Please check your connection.";
+      }
+    });
+  </script>
+</body>
+</html>
