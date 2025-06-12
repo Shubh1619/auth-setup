@@ -16,14 +16,13 @@ import psycopg2
 from psycopg2.extras import RealDictCursor, DictCursor
 from psycopg2 import errors as pg_errors
 
-# Import your user schemas and auth logic
-from schemas.user import User, LoginRequest, ForgotPasswordRequest
-from models.db import get_db_connection, create_users_table
-from utils.auth_utils import hash_password, verify_password
-from models.db import DATABASE_URL
-
 # Load environment variables
 load_dotenv()
+
+# Import your user schemas and auth logic
+from schemas.user import User, LoginRequest, ForgotPasswordRequest
+from models.db import get_db_connection, create_users_table, DATABASE_URL
+from utils.auth_utils import hash_password, verify_password
 
 # Setup logging
 logger = logging.getLogger("Vavastapak")
@@ -40,7 +39,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # Ensure users table exists
 create_users_table()
@@ -92,10 +90,19 @@ class ResetPasswordPayload(BaseModel):
     new_password: str
     confirm_password: str
 
-
+# Utility to mask DB URL
+def mask_db_url(db_url: str) -> str:
+    if not db_url or "@" not in db_url:
+        return db_url
+    try:
+        prefix, rest = db_url.split("//", 1)
+        creds, rest = rest.split("@", 1)
+        user = creds.split(":")[0]
+        return f"{prefix}//{user}:*****@{rest}"
+    except:
+        return db_url
 
 # ================== USER REGISTRATION ENDPOINT ===================
-
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user: User):
     hashed_password = hash_password(user.password)
@@ -120,9 +127,7 @@ def register(user: User):
         logger.error(f"PostgreSQL Error during registration: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-
 # ================== LOGIN ENDPOINT ===================
-
 @app.post("/login")
 def login(login_request: LoginRequest):
     with get_db_connection() as conn:
@@ -136,7 +141,6 @@ def login(login_request: LoginRequest):
     return {"message": "Login successful", "name": user["name"], "role": user["role"]}
 
 # ================== FORGOT PASSWORD ENDPOINT ===================
-
 @app.post("/forgot-password/")
 async def forgot_password(payload: ForgotPasswordRequest, background_tasks: BackgroundTasks):
     with get_db_connection() as conn:
@@ -170,14 +174,10 @@ async def forgot_password(payload: ForgotPasswordRequest, background_tasks: Back
 
     return {"message": f"Password reset link sent to {payload.email}."}
 
-
 # ================== RESET PASSWORD ENDPOINT ===================
-
 @app.post("/reset-password/", status_code=status.HTTP_200_OK)
 async def reset_password(payload: ResetPasswordPayload):
     user_email = None
-
-    # Find matching email from reset token
     for email, token_data in reset_tokens.items():
         if token_data["token"] == payload.token:
             if token_data["expires"] < datetime.utcnow():
@@ -186,32 +186,24 @@ async def reset_password(payload: ResetPasswordPayload):
             user_email = email
             break
 
-    # Invalid token
     if not user_email:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    # Password match check
     if payload.new_password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
     try:
         hashed_password = hash_password(payload.new_password)
-
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("UPDATE users SET password=%s WHERE email=%s", (hashed_password, user_email))
                 conn.commit()
-
-        # Clean up the token
         reset_tokens.pop(user_email, None)
-
         return {"message": "✅ Password successfully reset. You can now log in."}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating password: {str(e)}")
 
 # ================== TESTING ENDPOINTS ===================
-
 @app.get("/users")
 def get_all_users():
     try:
@@ -223,8 +215,6 @@ def get_all_users():
     except Exception as e:
         logger.error(f"DB error fetching users: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
 
 @app.delete("/users/delete-all")
 def delete_all_users():
@@ -238,6 +228,13 @@ def delete_all_users():
         logger.error(f"DB error deleting users: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@app.get("/ping")
+def ping():
+    try:
+        with get_db_connection() as conn:
+            return {"status": "✅ Database connected", "db_url": mask_db_url(DATABASE_URL)}
+    except Exception as e:
+        return {"status": "❌ Failed to connect", "error": str(e)}
 
-# Prints the database URL for debugging or logging purposes
-print("DB URL used:", DATABASE_URL)
+# Print DB URL for debugging
+print("\U0001F50D DB URL used:", mask_db_url(DATABASE_URL))
