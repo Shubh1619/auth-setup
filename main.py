@@ -26,7 +26,7 @@ from utils.auth_utils import hash_password, verify_password
 load_dotenv()
 
 # Setup logging
-logger = logging.getLogger("trinetra")
+logger = logging.getLogger("Vavastapak")
 logging.basicConfig(level=logging.INFO)
 
 # FastAPI app instance
