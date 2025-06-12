@@ -6,6 +6,7 @@ class User(BaseModel):
     email: EmailStr
     password: str
     mobile: str
+    role: str  # Default role is 'user'
 
 class LoginRequest(BaseModel):
     email: EmailStr
