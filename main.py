@@ -256,8 +256,8 @@ def get_all_users():
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-⚠️ Dangerous: Delete all users (for testing only)
-Uncomment and protect with authentication before enabling in production
+# ⚠️ Dangerous: Delete all users (for testing only)
+# Uncomment and protect with authentication before enabling in production
 @app.delete("/users/delete-all")
 def delete_all_users():
     try:
