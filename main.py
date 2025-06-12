@@ -20,7 +20,7 @@ from psycopg2 import errors as pg_errors
 from schemas.user import User, LoginRequest, ForgotPasswordRequest
 from models.db import get_db_connection, create_users_table
 from utils.auth_utils import hash_password, verify_password
-
+from models.db import DATABASE_URL
 
 # Load environment variables
 load_dotenv()
@@ -237,3 +237,7 @@ def delete_all_users():
     except Exception as e:
         logger.error(f"DB error deleting users: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# Prints the database URL for debugging or logging purposes
+print("DB URL used:", DATABASE_URL)
