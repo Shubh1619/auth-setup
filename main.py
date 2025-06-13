@@ -155,7 +155,7 @@ async def forgot_password(payload: ForgotPasswordRequest, background_tasks: Back
     expiry = datetime.utcnow() + timedelta(minutes=10)
     reset_tokens[payload.email] = {"token": token, "expires": expiry}
 
-    reset_link = f"https://your-domain.com/reset-password?token={token}"
+    reset_link = f"https://auth-setup-3v60.onrender.com/reset-password?token={token}"
 
     subject = "Reset Your Password"
     body = f"""

@@ -1,0 +1,6 @@
+# In .gitignore
+.env
+
+# In .gitignore
+venv
+
